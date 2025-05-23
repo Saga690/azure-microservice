@@ -1,32 +1,36 @@
-name: Build and Push Docker Image to ACR
+name: Build & Push Docker Image to ACR
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: helioai.azurecr.io
+  IMAGE_NAME: appointment-service
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log in to Azure
+      - name: Azure login (Service Principal)
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Azure CLI - Log in to ACR
-        run: az acr login --name ${{ secrets.AZURE_REGISTRY_NAME }}
+      - name: Docker login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
 
-      - name: Build and Tag Docker Image
+      - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/appointment-service:latest .
+          docker build -t $REGISTRY/$IMAGE_NAME:latest .
 
-      - name: Push Docker Image to ACR
+      - name: Push Docker image
         run: |
-          docker push ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/appointment-service:latest
+          docker push $REGISTRY/$IMAGE_NAME:latest
