@@ -6,26 +6,39 @@ dotenv.config();
 const app = express();
 const port = 3000;
 
-const connection = mysql.createConnection({
+
+const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
   ssl: {
     rejectUnauthorized: true
   }
 });
 
-connection.connect(err => {
+//Test connection by getting a single connection from the pool
+pool.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Error connecting to DB:', err.message);
     process.exit(1);
+  } else {
+    console.log('✅ Connected to Azure MySQL');
+    connection.release(); // Release the connection back to the pool
   }
-  console.log('✅ Connected to Azure MySQL');
 });
 
+
+
+
+app.get('/health', (req, res) => res.send('OK'));
+
+
 app.get('/appointments', (req, res) => {
-  connection.query('SELECT * FROM appointment', (err, results) => {
+  pool.query('SELECT * FROM appointment', (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
